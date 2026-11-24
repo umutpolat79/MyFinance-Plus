@@ -5,7 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>MyFinance</title>
-<style>
+#printArea{display:none}
+@media print{
+  body *{visibility:hidden!important}
+  #printArea,#printArea *{visibility:visible!important}
+  #printArea{
+    display:block!important;
+    position:absolute;
+    left:0;
+    top:0;
+    width:100%;
+    padding:20px;
+    background:#fff;
+    color:#000;
+  }
+  #printArea table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+  }
+  #printArea th,#printArea td{
+    border:1px solid #ccc;
+    padding:6px;
+    text-align:left;
+  }
+}
+  <style>
 /* Layout: one phone-width column, hero figure on top, bottom tab bar, bottom sheets for every form. */
 :root{
   color-scheme:light;
@@ -378,29 +403,175 @@ function vBudget(){
   return h;
 }
 const niceStep=x=>{const e=Math.pow(10,Math.floor(Math.log10(x||1))),f=x/e;return(f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*e};
-function vReport(){
-  const months=[];for(let i=0;i<12;i++)months.push({i,...totals(RY,i)});
-  const ti=months.reduce((a,x)=>a+x.inc,0),ts=months.reduce((a,x)=>a+x.spend,0),tv=months.reduce((a,x)=>a+x.sav,0);
-  const gt={};GROUPS.forEach(k=>gt[k]=months.reduce((a,x)=>a+x.g[k],0));
-  let h=mnav(String(RY),'yprev','ynext');
-  h+=`<section class="card" style="margin-top:0"><h2>${t('r_title')}</h2><div class="kv"><span>${t('income')}</span><b class="num pos">${money(ti)}</b></div><div class="kv"><span>${t('spend')}</span><b class="num">${money(ts)}</b></div><div class="kv"><span>${t('savings')}</span><b class="num">${money(tv)}</b></div><div class="kv"><span>${t('net')}</span><b class="num ${ti-ts-tv<0?'neg':''}">${money(ti-ts-tv)}</b></div></section>`;
-  h+=`<section class="card"><div class="sh-head" style="margin-bottom:4px"><h2 style="margin:0">${t('r_chart')}</h2><button class="btn sm" data-act="tbl">${showTable?t('r_chart_b'):t('r_table')}</button></div>`;
-  if(showTable){
-    h+=`<div class="tblw"><table class="tbl"><thead><tr><th>${t('month')}</th><th>${t('income')}</th><th>${t('spend')}</th><th>${t('net')}</th></tr></thead><tbody>${months.map(x=>`<tr><td>${dfmt(new Date(RY,x.i,1),{month:'short'})}</td><td class="num">${money(x.inc)}</td><td class="num">${money(x.spend)}</td><td class="num">${money(x.inc-x.spend-x.sav)}</td></tr>`).join('')}</tbody></table></div>`;
-  }else{
-    const W=360,H=190,L=38,B=22,Tp=8,pw=W-L-4,ph=H-B-Tp,max=Math.max(1,...months.flatMap(x=>[x.inc,x.spend])),step=niceStep(max/4),top=step*4,bw=pw/12,w=Math.min(11,bw/2-2);
-    let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${t('r_chart')}">`;
-    for(let i=0;i<=4;i++){const y=Tp+ph-ph*i/4;s+=`<line class="grid" x1="${L}" x2="${W-4}" y1="${y}" y2="${y}"/><text x="${L-6}" y="${y+3}" text-anchor="end">${compact(step*i)}</text>`}
-    const bar=(x,v,col)=>{const hh=Math.max(0,v/top*ph);if(hh<=0)return'';const r=Math.min(4,hh,w/2),y=Tp+ph-hh;return `<path d="M${x},${Tp+ph}V${y+r}Q${x},${y} ${x+r},${y}H${x+w-r}Q${x+w},${y} ${x+w},${y+r}V${Tp+ph}Z" fill="${col}"/>`};
-    months.forEach((x,i)=>{const cx=L+bw*i+bw/2;s+=`<g data-m="${i}" class="${i===V.m&&RY===V.y?'sel':''}"><rect class="hit" x="${L+bw*i}" y="${Tp}" width="${bw}" height="${ph+B}"/>${bar(cx-w-1,x.inc,'var(--c1)')}${bar(cx+1,x.spend,'var(--c2)')}<text x="${cx}" y="${H-6}" text-anchor="middle">${esc(dfmt(new Date(RY,i,1),{month:'short'}).replace('.',''))}</text></g>`});
-    s+='</svg>';
-    h+=`<div class="legend"><span><i style="background:var(--c1)"></i>${t('income')}</span><span><i style="background:var(--c2)"></i>${t('spend')}</span></div><div class="readout num" id="readout"></div>${s}`;
+  function makePdfReport(){
+  const kind=document.getElementById('pdf-kind').value;
+  const from=document.getElementById('pdf-from').value;
+  const to=document.getElementById('pdf-to').value;
+  const rows=[];
+  const loans=[];
+
+  if(kind==='loan'||kind==='all'){
+    for(const it of S.items){
+      if(it.kind==='loan'||it.kind==='inst'){
+        const p=progress(it);
+        loans.push(`<tr>
+          <td>${esc(it.name)}</td>
+          <td>${money(p.total)}</td>
+          <td>${money(p.monthly)}</td>
+          <td>${p.paid}/${p.n}</td>
+          <td>${money(p.remaining)}</td>
+        </tr>`);
+      }
+    }
   }
+
+  if(kind!=='loan'){
+    for(let d=new Date(2000,0,1);d<=new Date(2100,11,1);d.setMonth(d.getMonth()+1)){
+      const y=d.getFullYear(),m=d.getMonth();
+      const list=occ(y,m);
+      for(const x of list){
+        if(from&&x.date<from)continue;
+        if(to&&x.date>to)continue;
+        if(kind==='income'&&x.type!=='income')continue;
+        if(kind==='savings'&&x.type!=='savings')continue;
+        if(kind==='expense'&&['income','savings'].includes(x.type))continue;
+        rows.push(`<tr>
+          <td>${esc(x.date)}</td>
+          <td>${esc(x.name)}</td>
+          <td>${esc(x.type)}</td>
+          <td>${money(x.amount)}</td>
+        </tr>`);
+      }
+    }
+  }
+
+  const loanTable=loans.length?`
+    <h2>Kredite und Raten</h2>
+    <table><tr><th>Name</th><th>Gesamt</th><th>Monatlich</th><th>Bezahlt</th><th>Offen</th></tr>
+    ${loans.join('')}</table>`:'';
+
+  const dataTable=rows.length?`
+    <h2>Einträge</h2>
+    <table><tr><th>Datum</th><th>Name</th><th>Art</th><th>Betrag</th></tr>
+    ${rows.join('')}</table>`:'<p>Keine Einträge gefunden.</p>';
+
+  document.getElementById('printArea').innerHTML=`
+    <h1>MyFinance Plus</h1>
+    <p>Bericht: ${esc(kind)}</p>
+    <p>Zeitraum: ${from||'Alle'} – ${to||'Alle'}</p>
+    ${loanTable}${dataTable}`;
+
+  if(window.Android&&Android.printPdf) Android.printPdf();
+  else alert('PDF-Funktion ist noch nicht eingerichtet.');
+}
+
+function vReport(){
+  const months=[];
+  for(let i=0;i<12;i++)months.push({i,...totals(RY,i)});
+  const ti=months.reduce((a,x)=>a+x.inc,0);
+  const ts=months.reduce((a,x)=>a+x.spend,0);
+  const tv=months.reduce((a,x)=>a+x.sav,0);
+  const gt={};
+  GROUPS.forEach(k=>gt[k]=months.reduce((a,x)=>a+x.g[k],0));
+
+  let h=mnav(String(RY),'yprev','ynext');
+
+  h+=`<section class="card">
+    <h2>PDF Export / PDF Dışa Aktarma</h2>
+    <label class="fld">
+      <span>Bericht / Rapor türü</span>
+      <select id="pdf-kind">
+        <option value="all">Alle Daten / Tüm veriler</option>
+        <option value="loan">Kredite / Krediler</option>
+        <option value="savings">Sparen / Birikimler</option>
+        <option value="income">Einnahmen / Gelirler</option>
+        <option value="expense">Ausgaben / Giderler</option>
+      </select>
+    </label>
+    <div class="two">
+      <label class="fld">
+        <span>Von / Başlangıç</span>
+        <input id="pdf-from" type="date">
+      </label>
+      <label class="fld">
+        <span>Bis / Bitiş</span>
+        <input id="pdf-to" type="date">
+      </label>
+    </div>
+    <button class="btn primary block" data-act="pdfexport">
+      PDF erstellen / PDF oluştur
+    </button>
+  </section>`;
+
+  h+=`<section class="card" style="margin-top:0">
+    <h2>${t('r_title')}</h2>
+    <div class="kv"><span>${t('income')}</span><b class="num pos">${money(ti)}</b></div>
+    <div class="kv"><span>${t('spend')}</span><b class="num">${money(ts)}</b></div>
+    <div class="kv"><span>${t('savings')}</span><b class="num">${money(tv)}</b></div>
+    <div class="kv"><span>${t('net')}</span><b class="num ${ti-ts-tv<0?'neg':''}">${money(ti-ts-tv)}</b></div>
+  </section>`;
+
+  h+=`<section class="card">
+    <div class="sh-head" style="margin-bottom:4px">
+      <h2 style="margin:0">${t('r_chart')}</h2>
+      <button class="btn sm" data-act="tbl">${showTable?t('r_chart_b'):t('r_table')}</button>
+    </div>`;
+
+  if(showTable){
+    h+=`<div class="tblw"><table class="tbl">
+      <thead><tr><th>${t('month')}</th><th>${t('income')}</th><th>${t('spend')}</th><th>${t('net')}</th></tr></thead>
+      <tbody>${months.map(x=>`<tr>
+        <td>${dfmt(new Date(RY,x.i,1),{month:'short'})}</td>
+        <td class="num">${money(x.inc)}</td>
+        <td class="num">${money(x.spend)}</td>
+        <td class="num">${money(x.inc-x.spend-x.sav)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  }else{
+    const W=360,H=190,L=38,B=22,Tp=8,pw=W-L-4,ph=H-B-Tp;
+    const max=Math.max(1,...months.flatMap(x=>[x.inc,x.spend]));
+    const step=niceStep(max/4),top=step*4,bw=pw/12,w=Math.min(11,bw/2-2);
+    let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${t('r_chart')}">`;
+    for(let i=0;i<=4;i++){
+      const y=Tp+ph-ph*i/4;
+      s+=`<line class="grid" x1="${L}" x2="${W-4}" y1="${y}" y2="${y}"/><text x="${L-6}" y="${y+3}" text-anchor="end">${compact(step*i)}</text>`;
+    }
+    const bar=(x,v,col)=>{
+      const hh=Math.max(0,v/top*ph);
+      if(hh<=0)return'';
+      const r=Math.min(4,hh,w/2),y=Tp+ph-hh;
+      return `<path d="M${x},${Tp+ph}V${y+r}Q${x},${y} ${x+r},${y}H${x+w-r}Q${x+w},${y} ${x+w},${y+r}V${Tp+ph}Z" fill="${col}"/>`;
+    };
+    months.forEach((x,i)=>{
+      const cx=L+bw*i+bw/2;
+      s+=`<g data-m="${i}" class="${i===V.m&&RY===V.y?'sel':''}">
+        <rect class="hit" x="${L+bw*i}" y="${Tp}" width="${bw}" height="${ph+B}"/>
+        ${bar(cx-w-1,x.inc,'var(--c1)')}
+        ${bar(cx+1,x.spend,'var(--c2)')}
+        <text x="${cx}" y="${H-6}" text-anchor="middle">${esc(dfmt(new Date(RY,i,1),{month:'short'}).replace('.',''))}</text>
+      </g>`;
+    });
+    s+='</svg>';
+    h+=`<div class="legend">
+      <span><i style="background:var(--c1)"></i>${t('income')}</span>
+      <span><i style="background:var(--c2)"></i>${t('spend')}</span>
+    </div><div class="readout num" id="readout"></div>${s}`;
+  }
+
   h+=`</section>`;
   const rows=GROUPS.map(k=>({k,v:gt[k]})).filter(r=>r.v>0).sort((a,b)=>b.v-a.v);
-  if(rows.length)h+=`<section class="card"><h2>${t('r_cats')}</h2>${rows.map(r=>`<div class="row"><span class="dot" style="background:var(--g-${r.k})"></span><span class="main"><b>${t('g_'+r.k)}</b><small>${Math.round(r.v/ts*100)}%</small></span><span class="amt num">${money(r.v)}</span></div>`).join('')}</section>`;
+  if(rows.length)h+=`<section class="card">
+    <h2>${t('r_cats')}</h2>
+    ${rows.map(r=>`<div class="row">
+      <span class="dot" style="background:var(--g-${r.k})"></span>
+      <span class="main"><b>${t('g_'+r.k)}</b><small>${Math.round(r.v/ts*100)}%</small></span>
+      <span class="amt num">${money(r.v)}</span>
+    </div>`).join('')}
+  </section>`;
+
   return h;
 }
+
 function setReadout(i){
   const el=$('#readout');if(!el)return;const x=totals(RY,i);
   el.textContent=`${dfmt(new Date(RY,i,1),{month:'long'})}: ${t('income')} ${money(x.inc)} · ${t('spend')} ${money(x.spend)}`;
@@ -505,6 +676,7 @@ document.addEventListener('click',e=>{
   const a=b.dataset.act,id=b.dataset.id,v=b.dataset.v;
   const item=id?S.items.find(x=>x.id===id):null;
   switch(a){
+    case 'pdfexport':makePdfReport();break;  
     case 'tab':tab=v;render();window.scrollTo(0,0);break;
     case 'mprev':moveM(-1);RY=V.y;render();break;case 'mnext':moveM(1);RY=V.y;render();break;
     case 'yprev':RY--;render();break;case 'ynext':RY++;render();break;
@@ -554,5 +726,6 @@ window.__onBackup=function(b64){
 };
 load();render();
 </script>
+ <div id="printArea"></div> 
 </body>
 </html>
