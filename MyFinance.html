@@ -436,12 +436,20 @@ const niceStep=x=>{const e=Math.pow(10,Math.floor(Math.log10(x||1))),f=x/e;retur
         if(kind==='income'&&x.type!=='income')continue;
         if(kind==='savings'&&x.type!=='savings')continue;
         if(kind==='expense'&&['income','savings'].includes(x.type))continue;
-        rows.push(`<tr>
-          <td>${esc(x.date)}</td>
-          <td>${esc(x.name)}</td>
-          <td>${esc(x.type)}</td>
-          <td>${money(x.amount)}</td>
-        </tr>`);
+       if(kind==='savings'){
+  rows.push(`<tr>
+    <td>${esc(x.name)}</td>
+    <td>Sparen</td>
+    <td>${money(x.amount)}</td>
+  </tr>`);
+}else{
+  rows.push(`<tr>
+    <td>${esc(x.date)}</td>
+    <td>${esc(x.name)}</td>
+    <td>${esc(x.type)}</td>
+    <td>${money(x.amount)}</td>
+  </tr>`);
+}
       }
     }
   }
@@ -453,7 +461,11 @@ const niceStep=x=>{const e=Math.pow(10,Math.floor(Math.log10(x||1))),f=x/e;retur
 
   const dataTable=rows.length?`
     <h2>Einträge</h2>
-    <table><tr><th>Datum</th><th>Name</th><th>Art</th><th>Betrag</th></tr>
+    <table>
+    <tr>${kind==='savings'
+      ? '<th>Name</th><th>Art</th><th>Betrag</th>'
+      : '<th>Datum</th><th>Name</th><th>Art</th><th>Betrag</th>'}
+    </tr>
     ${rows.join('')}</table>`:'<p>Keine Einträge gefunden.</p>';
 
   document.getElementById('printArea').innerHTML=`
