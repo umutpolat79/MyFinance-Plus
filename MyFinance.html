@@ -427,7 +427,8 @@ const niceStep=x=>{const e=Math.pow(10,Math.floor(Math.log10(x||1))),f=x/e;retur
   }
 
   if(kind!=='loan'){
-    for(let d=new Date(2000,0,1);d<=new Date(2100,11,1);d.setMonth(d.getMonth()+1)){
+    const today=new Date();
+for(let d=new Date(2000,0,1);d<=new Date(today.getFullYear(),today.getMonth(),1);d.setMonth(d.getMonth()+1)){
       const y=d.getFullYear(),m=d.getMonth();
       const list=occ(y,m);
       for(const x of list){
@@ -438,13 +439,14 @@ const niceStep=x=>{const e=Math.pow(10,Math.floor(Math.log10(x||1))),f=x/e;retur
         if(kind==='expense'&&['income','savings'].includes(x.type))continue;
        if(kind==='savings'){
   rows.push(`<tr>
+    <td>${esc(x.date.toLocaleDateString('de-DE'))}</td>
     <td>${esc(x.name)}</td>
     <td>Sparen</td>
     <td>${money(x.amount)}</td>
   </tr>`);
 }else{
   rows.push(`<tr>
-    <td>${esc(x.date)}</td>
+    <td>${esc(x.date.toLocaleDateString('de-DE'))}</td>
     <td>${esc(x.name)}</td>
     <td>${esc(x.type)}</td>
     <td>${money(x.amount)}</td>
@@ -462,10 +464,12 @@ const niceStep=x=>{const e=Math.pow(10,Math.floor(Math.log10(x||1))),f=x/e;retur
   const dataTable=rows.length?`
     <h2>Einträge</h2>
     <table>
-    <tr>${kind==='savings'
-      ? '<th>Name</th><th>Art</th><th>Betrag</th>'
-      : '<th>Datum</th><th>Name</th><th>Art</th><th>Betrag</th>'}
-    </tr>
+    <tr>
+  <th>Datum</th>
+  <th>Name</th>
+  <th>Art</th>
+  <th>Betrag</th>
+</tr>
     ${rows.join('')}</table>`:'<p>Keine Einträge gefunden.</p>';
 
   document.getElementById('printArea').innerHTML=`
