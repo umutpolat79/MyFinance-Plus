@@ -132,7 +132,29 @@ jobs:
                   web.loadUrl("file:///android_asset/index.html");
               }
 
-              public class AndroidBridge {
+                            public class AndroidBridge {
+
+                  @JavascriptInterface
+                  public void printPdf() {
+                      runOnUiThread(() -> {
+                          PrintManager printManager =
+                              (PrintManager) getSystemService(PRINT_SERVICE);
+
+                          android.print.PrintDocumentAdapter adapter =
+                              web.createPrintDocumentAdapter("MyFinance-Plus");
+
+                          printManager.print(
+                              "MyFinance-Plus",
+                              adapter,
+                              new PrintAttributes.Builder()
+                                  .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+                                  .setResolution(new PrintAttributes.Resolution("pdf", "PDF", 300, 300))
+                                  .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
+                                  .build()
+                          );
+                      });
+                  }
+
                   @JavascriptInterface
                   public void saveBackup(String json) {
                       backupText = json;
