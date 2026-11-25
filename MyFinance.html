@@ -432,8 +432,9 @@ for(let d=new Date(2000,0,1);d<=new Date(today.getFullYear(),today.getMonth(),1)
       const y=d.getFullYear(),m=d.getMonth();
       const list=occ(y,m);
       for(const x of list){
-        if(from&&x.date<from)continue;
-        if(to&&x.date>to)continue;
+        const dateKey=ymd(x.date);
+        if(from&&dateKey<from)continue;
+        if(to&&dateKey>to)continue;
         if(kind==='income'&&x.type!=='income')continue;
         if(kind==='savings'&&x.type!=='savings')continue;
         if(kind==='expense'&&['income','savings'].includes(x.type))continue;
